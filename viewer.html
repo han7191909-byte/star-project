@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>My Star - てのひら星座工房</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
+    
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+      color: white;
+      font-family: "Zen Maru Gothic", sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #starCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    .ui-layer {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      pointer-events: none; /* 让点击穿透到画布 */
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      font-size: 20px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(255,255,255,0.5);
+      margin: 0;
+      opacity: 0;
+      animation: fadeIn 2s ease forwards 0.5s;
+    }
+
+    .date-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      margin-top: 8px;
+      opacity: 0;
+      animation: fadeIn 2s ease forwards 0.8s;
+    }
+
+    .footer-hint {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      opacity: 0;
+      animation: fadeIn 2s ease forwards 1.5s;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* 星星闪烁动画 */
+    .bg-star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0;
+      animation: twinkle var(--duration) ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 0.8; transform: scale(1.2); }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="starCanvas"></canvas>
+
+  <div id="starsContainer"></div>
+
+  <div class="ui-layer">
+    <div>
+      <h1>私の星座</h1>
+      <div class="date-label" id="dateText"></div>
+    </div>
+    
+    <div class="footer-hint">
+      スクリーンショットで保存してください
+    </div>
+  </div>
+
+<script>
+  // 1. 获取 URL 中的压缩数据
+  const urlParams = new URLSearchParams(window.location.search);
+  const compressedData = urlParams.get('d');
+
+  if (compressedData) {
+    try {
+      // 2. 解压数据
+      const jsonString = LZString.decompressFromEncodedURIComponent(compressedData);
+      const data = JSON.parse(jsonString);
+      
+      if(data.d) document.getElementById('dateText').innerText = data.d;
+
+      initVisuals(data);
+
+    } catch (e) {
+      console.error("数据解析失败", e);
+      document.querySelector('h1').innerText = "星が見つかりません...";
+    }
+  } else {
+    document.querySelector('h1').innerText = "データがありません";
+  }
+
+  // 初始化视觉效果
+  function initVisuals(data) {
+    const canvas = document.getElementById('starCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+
+    // 处理星座数据，将其居中并适配屏幕
+    const allPoints = [...data.p];
+    data.s.forEach(path => allPoints.push(...path));
+
+    // 计算包围盒
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    allPoints.forEach(p => {
+      if(p.x < minX) minX = p.x;
+      if(p.x > maxX) maxX = p.x;
+      if(p.y < minY) minY = p.y;
+      if(p.y > maxY) maxY = p.y;
+    });
+
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // 计算缩放比例 (留出边距)
+    const scale = Math.min(W * 0.7 / contentW, H * 0.6 / contentH);
+    
+    // 偏移量
+    let offsetX = 0; 
+    let offsetY = 0;
+
+    // 陀螺仪视差变量
+    let tiltX = 0;
+    let tiltY = 0;
+
+    // 监听设备倾斜
+    window.addEventListener('deviceorientation', (e) => {
+      // 将 gamma (-90~90) 和 beta (-180~180) 映射到小范围位移
+      if(e.gamma !== null) tiltX = e.gamma * 0.5; 
+      if(e.beta !== null) tiltY = (e.beta - 45) * 0.5; // 假设用户倾斜45度持握
+    });
+    
+    // 鼠标移动视差 (桌面调试用)
+    window.addEventListener('mousemove', (e) => {
+      tiltX = (e.clientX - W/2) / 20;
+      tiltY = (e.clientY - H/2) / 20;
+    });
+
+    // 动画循环
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      
+      // 平滑插值
+      offsetX += (tiltX - offsetX) * 0.1;
+      offsetY += (tiltY - offsetY) * 0.1;
+
+      ctx.save();
+      // 将坐标系移动到屏幕中心，并应用视差偏移
+      ctx.translate(W/2 + offsetX, H/2 + offsetY);
+      ctx.scale(scale, scale);
+      ctx.translate(-centerX, -centerY);
+
+      // 1. 绘制连线 (data.s) - 淡淡的光晕
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      data.s.forEach(path => {
+        if(path.length < 2) return;
+        
+        // 外发光
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        path.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = "rgba(100, 200, 255, 0.15)";
+        ctx.stroke();
+
+        // 核心亮线
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        path.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "rgba(230, 245, 255, 0.9)";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "white";
+        ctx.stroke();
+      });
+
+      // 2. 绘制星星点 (data.p)
+      data.p.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "white";
+        ctx.fill();
+        
+        // 淡淡的光圈
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.fill();
+      });
+
+      ctx.restore();
+      requestAnimationFrame(draw);
+    }
+    
+    draw();
+    createBackgroundStars();
+  }
+
+  // 生成背景随机星星
+  function createBackgroundStars() {
+    const container = document.getElementById('starsContainer');
+    for(let i=0; i<50; i++) {
+      const star = document.createElement('div');
+      star.className = 'bg-star';
+      const size = Math.random() * 2 + 1;
+      star.style.width = size + 'px';
+      star.style.height = size + 'px';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+      star.style.setProperty('--delay', (Math.random() * 5) + 's');
+      container.appendChild(star);
+    }
+  }
+
+  // 窗口大小改变处理
+  window.addEventListener('resize', () => {
+    // 简单刷新页面以重新计算布局
+    location.reload();
+  });
+
+</script>
+</body>
+</html>
