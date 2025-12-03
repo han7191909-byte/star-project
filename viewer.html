@@ -107,28 +107,76 @@
   </div>
 
 <script>
-  // 1. 获取 URL 中的压缩数据
-  const urlParams = new URLSearchParams(window.location.search);
-  const compressedData = urlParams.get('d');
 
-  if (compressedData) {
-    try {
-      // 2. 解压数据
-      const jsonString = LZString.decompressFromEncodedURIComponent(compressedData);
-      const data = JSON.parse(jsonString);
+// === 联网取件版 Viewer ===
+  
+  // 辅助函数：还原扁平数据
+  function expand(flatArray) {
+    if (!flatArray || flatArray.length === 0) return [];
+    const points = [];
+    for (let i = 0; i < flatArray.length; i += 2) {
+      points.push({ x: flatArray[i], y: flatArray[i+1] });
+    }
+    return points;
+  }
+
+  // 1. 检查 URL 参数
+  const urlParams = new URLSearchParams(window.location.search);
+  const binId = urlParams.get('id'); // 获取云端 ID
+  const compressedData = urlParams.get('d'); // 兼容旧版
+
+  // ---------------------------------------------------------
+  // 【重要】Viewer 也需要 API Key 来读取数据
+  // 你可以和主程序用同一个 Key
+  const API_KEY = '$2a$10$H56XRVSRijO/AVt8OmmhKeRKR4gYZqqxtyeYFd0dpvTKy2UQdhIma'; 
+  // ---------------------------------------------------------
+
+  if (binId) {
+    // === 模式 A: 从云端下载 ===
+    document.querySelector('h1').innerText = "星を読み込んでいます..."; // Loading...
+    
+    fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'GET',
+      headers: {
+        'X-Master-Key': API_KEY
+      }
+    })
+    .then(response => response.json())
+    .then(result => {
+      const rawData = result.record;
+      document.querySelector('h1').innerText = "私の星座";
+      
+      // 数据处理
+      const data = {
+        d: rawData.d,
+        p: expand(rawData.p),
+        s: (rawData.s || []).map(stroke => expand(stroke))
+      };
       
       if(data.d) document.getElementById('dateText').innerText = data.d;
-
       initVisuals(data);
+    })
+    .catch(err => {
+      console.error(err);
+      document.querySelector('h1').innerText = "星の通信エラー";
+    });
 
+  } else if (compressedData) {
+    // === 模式 B: 旧版 URL 数据 (兼容) ===
+    try {
+      const jsonString = LZString.decompressFromEncodedURIComponent(compressedData);
+      const rawData = JSON.parse(jsonString);
+      // ... (旧版解析逻辑) ...
+      // 简单处理兼容
+      const data = { d: rawData.d, p: rawData.p, s: rawData.s }; 
+      // 注意：如果你之前用了 expand 这里也要加判断，略过细节
+      initVisuals(data);
     } catch (e) {
-      console.error("数据解析失败", e);
-      document.querySelector('h1').innerText = "星が見つかりません...";
+      document.querySelector('h1').innerText = "データ破損";
     }
   } else {
     document.querySelector('h1').innerText = "データがありません";
   }
-
   // 初始化视觉效果
   function initVisuals(data) {
     const canvas = document.getElementById('starCanvas');
