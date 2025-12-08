@@ -6,7 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap');
+    @font-face {
+      font-family: "Kan412TyposStd";
+      src: url("fonts/Kan412TyposStd-Regular.otf") format("opentype");
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Kan410TyposStd";
+      src: url("fonts/Kan410TyposStd-Regular.otf") format("opentype");
+      font-weight: normal;
+      font-style: normal;
+    }
     
     body {
       margin: 0;
@@ -19,7 +30,7 @@
         radial-gradient(circle at 20% 40%, rgba(20, 40, 60, 0.2) 0%, transparent 50%),
         linear-gradient(to bottom, #020305 0%, #080a12 100%);
       color: white;
-      font-family: "Zen Maru Gothic", sans-serif;
+      font-family: "Kan412TyposStd", "漢字タイポス４１２ Std", "Helvetica Neue", Arial, sans-serif;
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -78,10 +89,11 @@
       opacity: 0;
       transform: translateY(-10px);
       animation: fadeInMove 2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards 0.5s;
+      font-family: "Kan412TyposStd", "漢字タイポス４１２ Std", "Helvetica Neue", Arial, sans-serif;
     }
 
     .date-label {
-      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-family: "Kan410TyposStd", "漢字タイポス４１０ Std", "Helvetica Neue", Arial, sans-serif;
       font-size: 11px;
       color: rgba(180, 200, 255, 0.7);
       margin-top: 12px;
@@ -101,6 +113,7 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
       opacity: 0;
       animation: fadeIn 2s ease forwards 1.5s;
+      font-family: "Kan410TyposStd", "漢字タイポス４１０ Std", "Helvetica Neue", Arial, sans-serif;
     }
 
     @keyframes fadeIn { to { opacity: 1; } }
