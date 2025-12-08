@@ -80,16 +80,16 @@
     }
 
     h1 {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: 4px;
-      color: #eaf6ff;
-      text-shadow: 0 0 15px rgba(180, 220, 255, 0.6);
       margin: 0;
       opacity: 0;
       transform: translateY(-10px);
       animation: fadeInMove 2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards 0.5s;
-      font-family: "Kan412TyposStd", "漢字タイポス４１２ Std", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    h1 img {
+      max-width: 200px;
+      height: auto;
+      filter: drop-shadow(0 0 15px rgba(180, 220, 255, 0.6));
     }
 
     .date-label {
@@ -130,7 +130,7 @@
 
   <div class="ui-layer">
     <div>
-      <h1>私の星座</h1>
+      <h1><img src="手.png" alt="手"></h1>
       <div class="date-label" id="dateText"></div>
     </div>
     <div class="footer-hint">スクリーンショットで保存してください</div>
@@ -211,14 +211,12 @@
   const API_KEY = '$2a$10$H56XRVSRijO/AVt8OmmhKeRKR4gYZqqxtyeYFd0dpvTKy2UQdhIma'; 
 
   if (binId) {
-    document.querySelector('h1').innerText = "星を読み込んでいます...";
     fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'GET', headers: { 'X-Master-Key': API_KEY }
     })
     .then(r => r.json())
     .then(result => {
       const raw = result.record;
-      document.querySelector('h1').innerText = "私の星座";
       const data = {
         d: raw.d,
         p: expand(raw.p),
@@ -228,7 +226,7 @@
       if(data.d) document.getElementById('dateText').innerText = data.d;
       initVisuals(data);
     })
-    .catch(e => { console.error(e); document.querySelector('h1').innerText = "通信エラー"; });
+    .catch(e => { console.error(e); });
   } else if (compressedData) {
     try {
       const json = LZString.decompressFromEncodedURIComponent(compressedData);
@@ -237,7 +235,6 @@
       initVisuals(data);
     } catch(e){}
   } else {
-    document.querySelector('h1').innerText = "データなし";
     // データがなくても背景だけは描画して雰囲気を出す
     initBackgroundOnly();
   }
